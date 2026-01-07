@@ -104,52 +104,12 @@
     </footer>
 
     <script>
-        let progressTimer = null;
-
         function addLog(text) {
             const box = document.getElementById("statusLog");
             const div = document.createElement("div");
             div.className = "log";
             div.innerText = text;
             box.prepend(div);
-        }
-
-        function startProgressPolling() {
-            clearInterval(progressTimer);
-            progressTimer = setInterval(fetchProgress, 700);
-        }
-
-        function fetchProgress() {
-            if (d.download_url) {
-                addLog("⬇️ Download link ready");
-                addLog(window.location.origin + d.download_url);
-            }
-
-            fetch("/progress")
-                .then(r => r.json())
-                .then(d => {
-                    const bar = document.getElementById("progress-bar");
-                    const text = document.getElementById("progress-text");
-
-                    bar.style.width = d.percent + "%";
-                    text.innerText = d.percent + "% - " + (d.message || "");
-                    if (d.download_url) {
-                        const fullLink = window.location.origin + d.download_url;
-                        addLog("⬇️ Download video:");
-                        addLog(fullLink);
-                    }
-
-                    if (d.download_url) {
-                        addLog("⬇️ Download link ready");
-                        addLog(window.location.origin + d.download_url);
-                    }
-
-
-                    if (d.percent >= 100) {
-                        clearInterval(progressTimer);
-                    }
-                })
-                .catch(() => { });
         }
 
         function fetchPreview() {
@@ -179,15 +139,9 @@
                         document.getElementById("preview").classList.remove("hidden");
 
                         const scriptBtn = document.getElementById("scriptBtn");
-                        if (d.is_youtube) {
-                            scriptBtn.style.display = "block";
-                        } else {
-                            scriptBtn.style.display = "none";
-                            addLog("ℹ️ Script download available for YouTube only");
-                        }
+                        scriptBtn.style.display = d.is_youtube ? "block" : "none";
 
                         addLog("✅ Video loaded");
-                        startProgressPolling();
                     } else {
                         addLog("❌ " + d.msg);
                     }
@@ -197,54 +151,26 @@
         function startDownload() {
             const url = document.getElementById("url").value.trim();
             const quality = document.getElementById("quality").value;
-            const subs = document.getElementById("subs").checked;
 
             if (!url) {
                 addLog("❌ No URL to download");
                 return;
             }
 
-            addLog("⬇️ Download request sent…");
+            addLog("⚡ Preparing download link…");
 
             fetch("/download", {
                 method: "POST",
                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
                 body:
                     "url=" + encodeURIComponent(url) +
-                    "&quality=" + encodeURIComponent(quality) +
-                    "&subs=" + subs
+                    "&quality=" + encodeURIComponent(quality)
             })
                 .then(res => res.json())
                 .then(data => {
                     if (data.status === "success") {
-                        addLog("✅ Download started");
-                        startProgressPolling();
-                    } else {
-                        addLog("❌ " + data.msg);
-                    }
-                });
-        }
-
-        function downloadScript() {
-            const url = document.getElementById("url").value.trim();
-
-            if (!url) {
-                addLog("❌ No URL for script");
-                return;
-            }
-
-            addLog("📄 Script generation started…");
-
-            fetch("/script", {
-                method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: "url=" + encodeURIComponent(url)
-            })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.status === "success") {
-                        addLog("✅ Script is being generated");
-                        startProgressPolling();
+                        addLog("📱 Download started in browser");
+                        window.location.href = data.direct_url;
                     } else {
                         addLog("❌ " + data.msg);
                     }
